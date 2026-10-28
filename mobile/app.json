@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "Sea\u2019N\u2019Sound",
+    "slug": "sea-n-sound",
+    "version": "1.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "bundleIdentifier": "design.seansound.phone",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "Connect to the exhibition laptop on local Wi-Fi.",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        },
+        "UILaunchScreen": {}
+      },
+      "buildNumber": "2"
+    },
+    "android": {
+      "package": "design.seansound.phone",
+      "permissions": [
+        "VIBRATE"
+      ],
+      "usesCleartextTraffic": true
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
+    ]
+  }
+}

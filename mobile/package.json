@@ -1,0 +1,21 @@
+{
+  "name": "sea-n-sound-phone",
+  "version": "1.1.0",
+  "private": true,
+  "main": "node_modules/expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "export": "expo export --platform android"
+  },
+  "dependencies": {
+    "expo": "~54.0.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "expo-haptics": "~15.0.7",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "react-native-svg": "15.12.1",
+    "expo-build-properties": "~1.0.9"
+  }
+}
