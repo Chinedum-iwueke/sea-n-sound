@@ -2,7 +2,7 @@
   "expo": {
     "name": "Sea\u2019N\u2019Sound",
     "slug": "sea-n-sound",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "ios": {
@@ -15,7 +15,7 @@
         "UILaunchScreen": {},
         "NSMotionUsageDescription": "Use gentle phone tilting to rock your exhibition seat."
       },
-      "buildNumber": "3"
+      "buildNumber": "4"
     },
     "android": {
       "package": "design.seansound.phone",

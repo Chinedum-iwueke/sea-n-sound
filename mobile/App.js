@@ -1,4 +1,4 @@
-import React,{useEffect,useRef,useState} from 'react';
+import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {SafeAreaView,ScrollView,View,Text,TextInput,Pressable,StyleSheet,Animated,PanResponder,AppState,Vibration,Platform,useWindowDimensions} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Accelerometer} from 'expo-sensors';
@@ -52,7 +52,8 @@ export default function App(){
  const [mode,setMode]=useState('tilt'),[motionStatus,setMotionStatus]=useState('Hold still to set your resting position.'),[calibration,setCalibration]=useState(0),[foreground,setForeground]=useState(AppState.currentState==='active');
  const socket=useRef(null),token=useRef(`phone-${Date.now()}-${Math.random().toString(36).slice(2)}`);
  const angle=useRef(new Animated.Value(0)).current,lightMix=useRef(new Animated.Value(0)).current;
- const touching=useRef(false);
+ const touching=useRef(false),inputMode=useRef('tilt'),scroll=useRef(null);
+ const [dragging,setDragging]=useState(false);
  const position=useRef(0),start=useRef(0),epoch=useRef(null),cue=useRef(new SyncCueGate());
  const seatWidth=Math.min(310,screenWidth-116);
  const send=m=>{if(socket.current?.readyState===1)socket.current.send(JSON.stringify(m));};
@@ -60,6 +61,7 @@ export default function App(){
   send({type:'input',x:position.current,active:false});
   Animated.timing(angle,{toValue:0,duration:450,useNativeDriver:true}).start();position.current=0;
  };
+ const selectMode=value=>{if(inputMode.current===value)return;inputMode.current=value;stop();setMode(value);};
  const move=value=>{position.current=value;angle.setValue(value);send({type:'input',x:value,active:true});};
  useEffect(()=>{Animated.timing(lightMix,{toValue:synced?1:0,duration:600,useNativeDriver:false}).start();},[synced]);
  useEffect(()=>{let mounted=true;AsyncStorage.multiGet(['config','token']).then(async values=>{
@@ -103,25 +105,27 @@ export default function App(){
     if(disposed)return;
     Accelerometer.setUpdateInterval(33);
     subscription=Accelerometer.addListener(sample=>{
-     if(disposed)return;lastSample=Date.now();const result=tilt.update(sample);
+     if(disposed||inputMode.current!=='tilt')return;lastSample=Date.now();const result=tilt.update(sample);
      if(!result){stop();setMotionStatus('Keep the phone upright or flat, and move gently.');return;}
      if(result.calibrating){setMotionStatus('Hold still for a moment to set your resting position.');return;}
      setMotionStatus('Tilt ready · gently rock your body back and forth.');move(result.value);
     });
     watchdog=setInterval(()=>{if(Date.now()-lastSample>1000){stop();setMotionStatus('Motion paused · tap Set resting position to retry.');}},1000);
    }catch{
-    if(!disposed){stop();setMotionStatus('Tilt unavailable. Use the handle, or enable motion access in Settings.');setMode('touch');}
+    if(!disposed){stop();setMotionStatus('Tilt unavailable. Use the handle, or enable motion access in Settings.');selectMode('touch');}
    }
   }
   begin();return()=>{disposed=true;subscription?.remove();clearInterval(watchdog);if(!touching.current)stop();};
  },[config,mode,foreground,calibration]);
  useEffect(()=>{const listener=AppState.addEventListener('change',state=>setForeground(state==='active'));return()=>listener.remove();},[]);
- const responder=PanResponder.create({
+ const responder=useMemo(()=>PanResponder.create({
   onStartShouldSetPanResponder:()=>true,onMoveShouldSetPanResponder:()=>true,
-  onPanResponderGrant:()=>{touching.current=true;setMode('touch');angle.stopAnimation();start.current=position.current;},
+  onStartShouldSetPanResponderCapture:()=>true,onMoveShouldSetPanResponderCapture:()=>true,
+  onPanResponderTerminationRequest:()=>false,onShouldBlockNativeResponder:()=>true,
+  onPanResponderGrant:()=>{touching.current=true;scroll.current?.setNativeProps({scrollEnabled:false});setDragging(true);selectMode('touch');angle.stopAnimation();start.current=position.current;},
   onPanResponderMove:(_,g)=>move(verticalPosition(start.current,g.dy,84)),
-  onPanResponderRelease:()=>{touching.current=false;stop();},onPanResponderTerminate:()=>{touching.current=false;stop();}
- });
+  onPanResponderRelease:()=>{touching.current=false;setDragging(false);scroll.current?.setNativeProps({scrollEnabled:true});stop();},onPanResponderTerminate:()=>{touching.current=false;setDragging(false);scroll.current?.setNativeProps({scrollEnabled:true});stop();}
+ }),[]);
  const join=async()=>{
   const normalized=host.trim().replace(/\/$/,'');
   if(!/^https?:\/\/[a-zA-Z0-9.\-]+(?::\d+)?$/.test(normalized)){setStatus('Enter the laptop address, for example http://192.168.1.10:8787');return;}
@@ -135,17 +139,17 @@ export default function App(){
    <Text style={s.label}>Laptop address</Text><TextInput style={s.input} value={host} onChangeText={setHost} autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholder="http://192.168.1.10:8787" accessibilityLabel="Laptop server address"/>
    <View style={s.row}>{['A','B'].map(id=><Pressable accessibilityRole="button" accessibilityState={{selected:seat===id}} key={id} onPress={()=>setSeat(id)} style={[s.button,s.seatButton,seat===id&&s.selected]}><Text style={seat===id?s.selectedText:s.buttonText}>Seat {id}</Text></Pressable>)}</View>
    <Pressable accessibilityRole="button" style={[s.button,s.join]} onPress={join}><Text style={s.selectedText}>Join the sea</Text></Pressable><Text style={s.body}>{status}</Text>
-  </View>:<ScrollView contentContainerStyle={{flexGrow:1}}>
+  </View>:<ScrollView ref={scroll} scrollEnabled={!dragging} contentContainerStyle={{flexGrow:1}}>
    <View pointerEvents="none" style={s.horizon}/>
    <Text style={s.kicker}>A MOMENT BY THE SEA</Text><Text style={s.title}>Find your rhythm.</Text>
    <Text style={s.instruction}>{mode==='tilt'?'Hold the phone against your chest, screen facing out. Gently rock forward and back.':'Slide the handle up and down to rock.'}</Text>
-   <View style={s.controlRow}>{['tilt','touch'].map(value=><Pressable key={value} accessibilityRole="button" accessibilityState={{selected:mode===value}} onPress={()=>{stop();setMode(value);}} style={[s.modeButton,mode===value&&s.selected]}><Text style={mode===value?s.selectedText:s.buttonText}>{value==='tilt'?'Body tilt':'Touch handle'}</Text></Pressable>)}</View>
-   <Pressable accessibilityRole="button" onPress={()=>{stop();setMode('tilt');setCalibration(c=>c+1);}} style={s.calibrate}><Text style={s.footerText}>Set resting position</Text></Pressable>
+   <View style={s.controlRow}>{['tilt','touch'].map(value=><Pressable key={value} accessibilityRole="button" accessibilityState={{selected:mode===value}} onPress={()=>selectMode(value)} style={[s.modeButton,mode===value&&s.selected]}><Text style={mode===value?s.selectedText:s.buttonText}>{value==='tilt'?'Body tilt':'Touch handle'}</Text></Pressable>)}</View>
+   <Pressable accessibilityRole="button" disabled={mode!=='tilt'} accessibilityState={{disabled:mode!=='tilt'}} onPress={()=>{stop();setCalibration(c=>c+1);}} style={s.calibrate}><Text style={s.footerText}>{mode==='tilt'?'Set resting position':'Tilt locked · touch control only'}</Text></Pressable>
    <Text style={s.motionStatus}>{mode==='tilt'||motionStatus.startsWith('Tilt unavailable')?motionStatus:'Touch mode · tap Body tilt to rock with your body.'}</Text>
    <View style={s.lightWrap}><Light mix={lightMix} individual={config.seat==='A'?'#f3a57c':'#9fb6f1'} synced={synced}/><Text style={s.rhythmText}>{synced?'In a shared rhythm':`Your own rhythm · Seat ${config.seat}`}</Text></View>
    <View style={s.scene}>
     <Seat angle={angle} width={seatWidth}/>
-    <View style={s.sliderArea} {...responder.panHandlers} accessible accessibilityRole="adjustable" accessibilityLabel={`Seat ${config.seat} rocking handle. Slide up and down.`} accessibilityActions={[{name:'increment',label:'Rock back'},{name:'decrement',label:'Rock forward'}]} onAccessibilityAction={e=>{setMode('touch');angle.stopAnimation();move(Math.max(-1,Math.min(1,position.current+(e.nativeEvent.actionName==='increment'?0.35:-0.35))));}}>
+    <View style={s.sliderArea} {...responder.panHandlers} accessible accessibilityRole="adjustable" accessibilityLabel={`Seat ${config.seat} rocking handle. Slide up and down.`} accessibilityActions={[{name:'increment',label:'Rock back'},{name:'decrement',label:'Rock forward'}]} onAccessibilityAction={e=>{selectMode('touch');angle.stopAnimation();move(Math.max(-1,Math.min(1,position.current+(e.nativeEvent.actionName==='increment'?0.35:-0.35))));}}>
      <Text style={s.arrow}>↑</Text><View style={s.track}><View style={s.centerMark}/><Animated.View style={[s.handle,{transform:[{translateY:angle.interpolate({inputRange:[-1,1],outputRange:[84,-84]})}]}]}><View style={s.grip}/><View style={s.grip}/><View style={s.grip}/></Animated.View></View><Text style={s.arrow}>↓</Text>
     </View>
    </View>

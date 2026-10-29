@@ -87,6 +87,10 @@ The project pins Expo SDK 54 and includes reproducible lockfiles. An online audi
 
 `mobile/scripts/fix-ios-paths.rb` is an optional helper for Expo SDK 54 builds in paths containing spaces. After generating the iOS project, it fixes shell quoting and replaces the template asset catalog and splash storyboard with Apple’s `UILaunchScreen` configuration. It requires the CocoaPods `xcodeproj` Ruby gem. This prototype uses the default app icon; configure a production icon before distributing a release.
 
+## Version 1.2.1
+
+Touch mode immediately locks out sensor input until Body tilt is selected. The handle captures its drag and suspends page scrolling while held, so vertical rocking cannot become a page scroll.
+
 ## Version 1.2.0
 
 Adds body tilt as the default native input, resting-position calibration, sensor availability fallback and the touch alternative. Adds `expo-sensors`, requiring a full native rebuild. Physical chest-rocking and two-phone synchrony need rehearsal on updated devices.
