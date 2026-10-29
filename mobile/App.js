@@ -1,8 +1,8 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {SafeAreaView,ScrollView,View,Text,TextInput,Pressable,StyleSheet,Animated,PanResponder,AppState,Vibration,Platform,useWindowDimensions} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {Accelerometer} from 'expo-sensors';
-import {TiltInput} from './tilt-input.mjs';
+import {DeviceMotion} from 'expo-sensors';
+import {TiltInput,motionGravity} from './tilt-input.mjs';
 import * as Haptics from 'expo-haptics';
 import Svg,{Path,Ellipse,Circle} from 'react-native-svg';
 import {SyncCueGate,verticalPosition,pivotOffset} from './sync-cue.mjs';
@@ -95,20 +95,20 @@ export default function App(){
  // A new subscription always calibrates before sending movement.
  useEffect(()=>{
   if(!config||mode!=='tilt'||!foreground)return;
-  let disposed=false,subscription,watchdog,lastSample=Date.now();const tilt=new TiltInput();
-  stop();setMotionStatus('Hold still for a moment to set your resting position.');
+  let disposed=false,subscription,watchdog,lastSensorTime=null,lastSample=Date.now();const tilt=new TiltInput();
+  stop();setMotionStatus('Stand straight. Hold the phone upright against your chest, screen out, for one second.');
   async function begin(){
    try{
-    if(!await Accelerometer.isAvailableAsync())throw new Error('unavailable');
-    const permission=await Accelerometer.requestPermissionsAsync();
+    if(!await DeviceMotion.isAvailableAsync())throw new Error('unavailable');
+    const permission=await DeviceMotion.requestPermissionsAsync();
     if(permission.status!=='granted')throw new Error('permission');
     if(disposed)return;
-    Accelerometer.setUpdateInterval(33);
-    subscription=Accelerometer.addListener(sample=>{
-     if(disposed||inputMode.current!=='tilt')return;lastSample=Date.now();const result=tilt.update(sample);
-     if(!result){stop();setMotionStatus('Keep the phone upright or flat, and move gently.');return;}
-     if(result.calibrating){setMotionStatus('Hold still for a moment to set your resting position.');return;}
-     setMotionStatus('Tilt ready · gently rock your body back and forth.');move(result.value);
+    DeviceMotion.setUpdateInterval(33);
+    subscription=DeviceMotion.addListener(sample=>{
+     if(disposed||inputMode.current!=='tilt')return;lastSample=Date.now();const sensorTime=sample.accelerationIncludingGravity?.timestamp*1000;const dt=Number.isFinite(sensorTime)&&lastSensorTime!==null?sensorTime-lastSensorTime:33;if(Number.isFinite(sensorTime))lastSensorTime=sensorTime;const result=tilt.update(motionGravity(sample),dt);
+     if(!result){stop();setMotionStatus('Keep the phone upright against your chest, top edge up.');return;}
+     if(result.calibrating){setMotionStatus('Stand straight. Hold the phone upright against your chest, screen out, for one second.');return;}
+     setMotionStatus('Ready · gently bow forward, then stand straight again.');move(-result.value);
     });
     watchdog=setInterval(()=>{if(Date.now()-lastSample>1000){stop();setMotionStatus('Motion paused · tap Set resting position to retry.');}},1000);
    }catch{
@@ -142,7 +142,7 @@ export default function App(){
   </View>:<ScrollView ref={scroll} scrollEnabled={!dragging} contentContainerStyle={{flexGrow:1}}>
    <View pointerEvents="none" style={s.horizon}/>
    <Text style={s.kicker}>A MOMENT BY THE SEA</Text><Text style={s.title}>Find your rhythm.</Text>
-   <Text style={s.instruction}>{mode==='tilt'?'Hold the phone against your chest, screen facing out. Gently rock forward and back.':'Slide the handle up and down to rock.'}</Text>
+   <Text style={s.instruction}>{mode==='tilt'?'Upright at your chest is the middle. Gently bow forward, then return to standing.':'Slide the handle up and down to rock.'}</Text>
    <View style={s.controlRow}>{['tilt','touch'].map(value=><Pressable key={value} accessibilityRole="button" accessibilityState={{selected:mode===value}} onPress={()=>selectMode(value)} style={[s.modeButton,mode===value&&s.selected]}><Text style={mode===value?s.selectedText:s.buttonText}>{value==='tilt'?'Body tilt':'Touch handle'}</Text></Pressable>)}</View>
    <Pressable accessibilityRole="button" disabled={mode!=='tilt'} accessibilityState={{disabled:mode!=='tilt'}} onPress={()=>{stop();setCalibration(c=>c+1);}} style={s.calibrate}><Text style={s.footerText}>{mode==='tilt'?'Set resting position':'Tilt locked · touch control only'}</Text></Pressable>
    <Text style={s.motionStatus}>{mode==='tilt'||motionStatus.startsWith('Tilt unavailable')?motionStatus:'Touch mode · tap Body tilt to rock with your body.'}</Text>

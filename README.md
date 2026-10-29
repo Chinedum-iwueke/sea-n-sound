@@ -55,7 +55,7 @@ Seat assignment and address persist on each native phone. A dropped connection r
 
 ## Synchrony model
 
-The laptop samples state at approximately 30 Hz. Native phones default to calibrated accelerometer pitch at approximately 30 Hz, with smoothing and a half-degree dead zone. Twelve degrees reaches full travel. Hold still for roughly 0.7 seconds when entering Body tilt or setting a resting position. Upright chest-held and face-up placement are supported; keep the same phone orientation across participants. Sideways placement is rejected. Returning from the background recalibrates. The vertical handle remains available: dragging selects Touch mode; release recentres it. Browser clients retain touch input. The base and the metal pivot remain stationary, with only the upper seat rotating about that pivot.
+The laptop samples state at approximately 30 Hz. Native phones default to fused DeviceMotion gravity, separating orientation from linear body acceleration. Stand straight with the phone upright against the chest, screen outward and top edge up. One second of stillness establishes the centre. A gentle forward bow moves the seat forward; returning to standing brings it back to the middle. About 18 degrees reaches full travel. A 1.5-degree rest zone, smoothing and bounded travel suppress small wobbles. Calibration waits for still, near-upright placement, and never drifts during rocking. Sideways and flat placement are rejected. Returning from the background recalibrates. The vertical handle remains available: dragging selects Touch mode and locks sensor input out until Body tilt is selected. Browser clients retain touch input. The base and the metal pivot remain stationary, with only the upper seat rotating about that pivot.
 
 Three reversals establish a recent full cycle. Full-cycle durations may differ by up to 40%. Matching reversals must be within 320 ms, with an additional cap of 24% of the shorter cycle so opposite-phase rocking never qualifies. Two seconds of qualifying movement still earns synchrony. A brief mismatch pauses qualification; a mismatch longer than 650 ms clears it. Input that has stopped moving times out after 900 ms. Releasing or disconnecting clears synchrony, with the lights fading back to their individual colours.
 
@@ -86,6 +86,10 @@ The project pins Expo SDK 54 and includes reproducible lockfiles. An online audi
 ## iOS build workaround
 
 `mobile/scripts/fix-ios-paths.rb` is an optional helper for Expo SDK 54 builds in paths containing spaces. After generating the iOS project, it fixes shell quoting and replaces the template asset catalog and splash storyboard with Apple’s `UILaunchScreen` configuration. It requires the CocoaPods `xcodeproj` Ruby gem. This prototype uses the default app icon; configure a production icon before distributing a release.
+
+## Version 1.3.0
+
+Steadier chest rocking: fused gravity, still upright calibration, a wider rest zone, and forward-bow / return-to-standing mapping. Physical comfort and direction should be checked on both phones.
 
 ## Version 1.2.1
 

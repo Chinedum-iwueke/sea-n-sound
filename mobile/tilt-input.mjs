@@ -1,25 +1,41 @@
-// Gravity-based pitch around the phone's short edge. Calibration makes a
-// chest-held, upright or face-up phone share the same comfortable rest point.
+// DeviceMotion separates gravity from body acceleration using the OS motion
+// estimate. Raw accelerometer readings confuse a step or shake with a lean.
+export function motionGravity(sample){
+ const total=sample?.accelerationIncludingGravity,linear=sample?.acceleration;
+ if(!total||!linear)return null;
+ const gravity={};
+ for(const axis of ['x','y','z']){
+  if(!Number.isFinite(total[axis])||!Number.isFinite(linear[axis]))return null;
+  gravity[axis]=(total[axis]-linear[axis])/9.80665;
+ }
+ return gravity;
+}
+
+// Upright chest pose is centre. Forward bow -> positive travel; standing
+// straight -> centre. Calibration never follows a moving person or drifts.
 export class TiltInput {
  constructor(){this.reset();}
- reset(){this.gravity=null;this.rest=null;this.samples=0;this.sum={y:0,z:0};}
- update({x,y,z}){
-  if(![x,y,z].every(Number.isFinite))return null;
-  const magnitude=Math.hypot(x,y,z);
-  if(magnitude<0.65||magnitude>1.35)return null;
-  if(!this.gravity)this.gravity={x,y,z};
-  else for(const axis of ['x','y','z'])this.gravity[axis]+=0.2*({x,y,z}[axis]-this.gravity[axis]);
-  const g=this.gravity,projection=Math.hypot(g.y,g.z);
-  if(projection<0.45)return null; // Sideways placement has no reliable pitch.
-  if(!this.rest){
-   this.sum.y+=g.y/projection;this.sum.z+=g.z/projection;
-   if(++this.samples<20)return {calibrating:true,value:0};
-   this.rest={y:this.sum.y/20,z:this.sum.z/20};
+ reset(){this.rest=null;this.window=[];this.filtered=null;this.value=0;}
+ update(sample,dt=33){
+  if(!sample||!['x','y','z'].every(axis=>Number.isFinite(sample[axis])))return null;
+  const {x,y,z}=sample,magnitude=Math.hypot(x,y,z);
+  if(magnitude<.85||magnitude>1.15||Math.abs(x)/magnitude>.4||y/magnitude>-.65){this.window=[];return null;}
+  const pitch=Math.atan2(z,-y)*180/Math.PI;
+  if(this.rest===null){
+   // Only accept a still, near-upright chest pose for about one second.
+   if(Math.abs(pitch)>25){this.window=[];return {calibrating:true,value:0};}
+   this.window.push(pitch);if(this.window.length>30)this.window.shift();
+   if(this.window.length<30||Math.max(...this.window)-Math.min(...this.window)>1.5)return {calibrating:true,value:0};
+   this.rest=this.window.reduce((sum,value)=>sum+value,0)/30;this.filtered=this.rest;
+   return {calibrating:false,value:0};
   }
-  const radians=Math.atan2(this.rest.y*g.z-this.rest.z*g.y,this.rest.y*g.y+this.rest.z*g.z);
-  const degrees=radians*180/Math.PI;
-  // Half a degree of rest noise is ignored; twelve degrees reaches full travel.
-  const value=Math.sign(degrees)*Math.min(1,Math.max(0,Math.abs(degrees)-0.5)/11.5);
-  return {calibrating:false,value};
+  dt=Math.max(10,Math.min(100,dt));
+  this.filtered+=(pitch-this.filtered)*(1-Math.exp(-dt/160));
+  const forward=this.filtered-this.rest;
+  const target=Math.min(1,Math.max(0,forward-1.5)/16.5);
+  // Reject tiny output tremors; cap abrupt changes without adding a spring.
+  if(Math.abs(target-this.value)>.006)this.value+=Math.max(-dt/450,Math.min(dt/450,target-this.value));
+  if(target===0&&this.value<.006)this.value=0;
+  return {calibrating:false,value:this.value};
  }
 }
