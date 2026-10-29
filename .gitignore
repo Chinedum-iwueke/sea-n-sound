@@ -23,3 +23,5 @@ dist-feedback/
 *.mobileprovision
 *.xcarchive/
 DerivedData/
+
+dist-*/

@@ -47,7 +47,7 @@ Open the printed facilitator link and use its Seat A / Seat B browser links in s
 1. Start the server and open the display. Enable quiet sea audio if wanted.
 2. Open the private facilitator link in a separate window.
 3. On each phone enter the printed network address; select A or B and join. Check that both connections appear on the laptop.
-4. Let visitors discover the interaction. Each vertical handle directly controls its own seat; holding still does not supply an automatic rhythm.
+4. Let visitors discover the interaction. Body tilt is the default native control. Hold the phone against the chest with its screen facing outward and top edge up, pause to calibrate, then gently rock forward and back. Tap Set resting position after repositioning the phone. Touching the vertical handle selects Touch mode. Holding still does not supply an automatic rhythm.
 5. **Reset movement** clears rhythm history and returns both seats to rest while retaining pairing. **Release both seats / next pair** clears pairing and sends both native apps back to setup. Tap Join on each phone for the next pair.
 6. Adjust reversal timing, cycle duration tolerance and divergence grace during rehearsal. Hold time remains two seconds as specified.
 
@@ -55,7 +55,7 @@ Seat assignment and address persist on each native phone. A dropped connection r
 
 ## Synchrony model
 
-The laptop samples state at approximately 30 Hz. Each phone has a continuous vertical thumb handle beside the illustrated seat. Dragging up and down drives the seat directly; release recentres the handle and settles the seat. The base and the metal pivot remain stationary, with only the upper seat rotating about that pivot.
+The laptop samples state at approximately 30 Hz. Native phones default to calibrated accelerometer pitch at approximately 30 Hz, with smoothing and a half-degree dead zone. Twelve degrees reaches full travel. Hold still for roughly 0.7 seconds when entering Body tilt or setting a resting position. Upright chest-held and face-up placement are supported; keep the same phone orientation across participants. Sideways placement is rejected. Returning from the background recalibrates. The vertical handle remains available: dragging selects Touch mode; release recentres it. Browser clients retain touch input. The base and the metal pivot remain stationary, with only the upper seat rotating about that pivot.
 
 Three reversals establish a recent full cycle. Full-cycle durations may differ by up to 40%. Matching reversals must be within 320 ms, with an additional cap of 24% of the shorter cycle so opposite-phase rocking never qualifies. Two seconds of qualifying movement still earns synchrony. A brief mismatch pauses qualification; a mismatch longer than 650 ms clears it. Input that has stopped moving times out after 900 ms. Releasing or disconnecting clears synchrony, with the lights fading back to their individual colours.
 
@@ -86,6 +86,10 @@ The project pins Expo SDK 54 and includes reproducible lockfiles. An online audi
 ## iOS build workaround
 
 `mobile/scripts/fix-ios-paths.rb` is an optional helper for Expo SDK 54 builds in paths containing spaces. After generating the iOS project, it fixes shell quoting and replaces the template asset catalog and splash storyboard with Apple’s `UILaunchScreen` configuration. It requires the CocoaPods `xcodeproj` Ruby gem. This prototype uses the default app icon; configure a production icon before distributing a release.
+
+## Version 1.2.0
+
+Adds body tilt as the default native input, resting-position calibration, sensor availability fallback and the touch alternative. Adds `expo-sensors`, requiring a full native rebuild. Physical chest-rocking and two-phone synchrony need rehearsal on updated devices.
 
 ## Version 1.1.0
 
